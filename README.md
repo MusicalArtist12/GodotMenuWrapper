@@ -1,3 +1,6 @@
+# Godot Menu Wrapper
+Julia Abdel-Monem
+
 # Preamble
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL
