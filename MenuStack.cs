@@ -1,67 +1,83 @@
+// Julia Abdel-Monem
+
+using System.Linq;
 using Godot;
 
-
-[GlobalClass]
-public partial class MenuStack : MenuOutput
-{
-    public override void Push(MenuNodeBlueprint blueprint)
+/* Subclass */
+public partial class MenuStack : MenuCompositeBase
+{  
+    public override void Push(MenuElement node)
     {
-		if (GetChildCount() > 0) {
-            CanvasItem Last = (CanvasItem)GetChildren().Last();
-		    Last.Visible = false;
+        if (GetChildCount() > 0 && GetChildren().Last() is MenuElement Last) 
+        {
+		    Last.Hide();
+            Last.OnHide();
         }
 
-        MenuNode node = blueprint.Instantiate();
+        if (node is Node cast)
+        {
+            AddChild(cast);
+            cast.Owner = this;
+        }
         
-        node.OnPush();
-
-        if (node.BackgroundNode != null)
-        {
-            AddChild(node.BackgroundNode);
-        }
-
-        AddChild(node);
-        node.Owner = this;
+        node.OnPush(this);
     }
-
-    public override void Pop()
+    
+    public override MenuElement Pop()
     {
-        if (GetChildCount() == 0) 
+        if (GetChildren().Any() == false)
         {
-            return;
+            Parent().Pop();
         }
-
-        if (GetChildren().Last() is MenuNode Child)
+        
+        if (GetChildren().Last() is MenuElement Child)
         {
             Child.OnPop();
 
-            if (Child.Poppable) 
+            if (Child.Poppable()) 
             {
                 RemoveChild(Child);
-            
                 Child.QueueFree();
 
-                if (GetChildCount() > 0) {
-                    CanvasItem Last = (CanvasItem)GetChildren().Last();
-                    Last.Visible = true;
+                if (GetChildCount() > 0 && GetChildren().Last() is MenuElement Last) 
+                {  
+                    Last.Show();
+                    Last.OnShow();
                 }     
-            }      
+            }  
+
+            while (GetChildren().Any() == true && GetChildren().Last() is MenuElement element && element.IsBackground())
+            {
+                element.QueueFree();
+                RemoveChild(element);
+            }
+            
+            if (GetChildren().Any() == false)
+            {
+                Parent().Pop();
+            }
+            
+            return Child;
         }
+    
+        throw new System.Exception("MenuStack must only contain MenuElements");
     }
 
-    // Does not call OnPop or AfterPop
-    public override void Clear()
-    {   
-        while (GetChildCount() > 0 && GetChildren().Last() is MenuNode Child)
-        {
-            RemoveChild(Child);
-            
-            Child.QueueFree();
+    public MenuStack() : base()
+    {     
+    }
 
-            if (GetChildCount() > 0) {
-                CanvasItem Last = (CanvasItem)GetChildren().Last();
-                Last.Visible = true;
-            }     
-        }
+    public override void _Input(InputEvent @event)
+    {
+        if (@event.IsActionPressed("open_menu"))
+        {
+            GetViewport().SetInputAsHandled();
+            Pop();
+        }        
+    }
+
+    public override Node GetContainer()
+    {
+        return this;
     }
 }
